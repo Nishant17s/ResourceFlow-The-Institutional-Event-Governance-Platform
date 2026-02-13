@@ -21,7 +21,7 @@ from streamlit_lottie import st_lottie
 # --------------------------------------------------------------------------------
 # 0. UI Configuration & Ultra-Premium Custom CSS
 # --------------------------------------------------------------------------------
-st.set_page_config(page_title="ResourceFlow", layout="wide", page_icon="🏛️")
+st.set_page_config(page_title="ResourceFlow", layout="wide", page_icon="🏛️", initial_sidebar_state="expanded")
 
 # Custom CSS for Premium Look
 st.markdown("""
@@ -316,22 +316,41 @@ def check_availability(start_time, end_time, venue, current_event_id=None):
 # 4. Main Application Logic
 # --------------------------------------------------------------------------------
 
+# --- Persistent Sidebar (Always Visible) ---
+with st.sidebar:
+    # App Logo/Header
+    st.image("https://cdn-icons-png.flaticon.com/512/3209/3209990.png", width=60)
+    st.markdown("<h2 style='display: inline-block; vertical-align: middle; margin-left: 10px;'>ResourceFlow</h2>", unsafe_allow_html=True)
+    st.markdown("---")
+
 if not st.session_state['logged_in']:
+    # Sidebar Content for Guest/Login Mode
+    with st.sidebar:
+        st.info("🔐 **Secure Access Required**\n\nPlease log in to manage institutional resources and approvals.")
+        st.markdown("### System Status\n🟢 **Online**\n\nv1.2.0-stable")
+    
     login_page()
 else:
-    # --- Sidebar ---
+    # --- Sidebar Content for Logged In Users ---
     role = st.session_state['user_role']
     user_dept = st.session_state['user_dept']
     user_name = st.session_state['user_name']
     
     with st.sidebar:
         if lottie_event:
-            st_lottie(lottie_event, height=150, key="menu_anim")
-        st.title(f"👤 {user_name}")
+            st_lottie(lottie_event, height=120, key="menu_anim")
+            
+        st.success(f"👤 **{user_name}**")
         st.caption(f"Role: {role} | Dept: {user_dept}")
-        if st.button("Logout", key="logout_btn"):
-            logout()
+        
         st.markdown("---")
+        if st.button("🚪 Logout", key="logout_btn", use_container_width=True):
+            logout()
+        
+        st.markdown("---")
+        st.markdown("### Quick Links")
+        st.markdown("- [Documentation](#)")
+        st.markdown("- [Support](#)")
 
     # --- Live Stats Row ---
     st.title("ResourceFlow Dashboard")

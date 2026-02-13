@@ -50,10 +50,10 @@ st.markdown("""
 
         /* Sidebar Glassmorphism */
         [data-testid="stSidebar"] {
-            background: rgba(15, 12, 41, 0.85);
-            backdrop-filter: blur(12px);
+            background: rgba(10, 8, 30, 0.95);
+            backdrop-filter: blur(20px);
             border-right: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 5px 0 25px rgba(0,0,0,0.3);
+            box-shadow: 10px 0 30px rgba(0,0,0,0.5);
         }
         
         /* Fade In Animation for Content */
@@ -337,23 +337,37 @@ else:
     user_name = st.session_state['user_name']
     
     with st.sidebar:
+        # User Profile Section
         if lottie_event:
-            st_lottie(lottie_event, height=120, key="menu_anim")
-            
-        st.success(f"👤 **{user_name}**")
-        st.caption(f"Role: {role} | Dept: {user_dept}")
+            st_lottie(lottie_event, height=100, key="menu_anim")
         
-        st.markdown("---")
-        if st.button("🚪 Logout", key="logout_btn", use_container_width=True):
-            logout()
+        st.divider()
+        st.markdown(f"""
+        <div style="background-color: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; text-align: center;">
+            <h3 style="margin:0; color:white;">{user_name}</h3>
+            <p style="margin:0; font-size: 0.9em; color: #bbb;">{role}</p>
+            <p style="margin:0; font-size: 0.8em; color: #e52e71;">{user_dept} Department</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        st.markdown("---")
-        st.markdown("### Quick Links")
-        st.markdown("- [Documentation](#)")
-        st.markdown("- [Support](#)")
+        st.divider()
+        
+        # Navigation (Future Proofing)
+        st.markdown("### 🧭 Navigation")
+        nav_mode = st.radio("Go to:", ["Dashboard", "All Events", "Settings"], label_visibility="collapsed")
+        
+        st.divider()
+        
+        # Logout Section
+        st.markdown("### ⚙️ Account")
+        if st.button("🚪 Sign Out", key="sidebar_logout_btn", use_container_width=True):
+            with st.spinner("Logging out..."):
+                logout()
+        
+        st.caption("ResourceFlow v2.0 • Online")
 
     # --- Live Stats Row ---
-    st.title("ResourceFlow Dashboard")
+    st.title(f"{nav_mode if nav_mode != 'Dashboard' else 'ResourceFlow Dashboard'}")
     
     # Calculate Stats
     total_events = len(st.session_state['events'])

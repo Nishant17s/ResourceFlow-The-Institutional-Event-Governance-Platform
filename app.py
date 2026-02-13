@@ -363,6 +363,7 @@ else:
                 d = st.date_input("Date", datetime.date.today() + datetime.timedelta(days=1))
                 t_start = st.time_input("Start Time", datetime.time(9, 0))
                 t_end = st.time_input("End Time", datetime.time(11, 0))
+                evt_desc = st.text_area("Event Description / Purpose")
 
             submit = st.form_submit_button("Check Availability & Submit")
 
@@ -387,7 +388,9 @@ else:
                         'start_time': start_dt,
                         'end_time': end_dt,
                         'equipment': evt_equip,
-                        'status': 'Pending'
+                        'description': evt_desc,
+                        'status': 'Pending',
+                        'feedback': ''
                     }
                     st.session_state['events'].append(new_event)
                     st.success(f"✅ Event '{evt_name}' requested successfully! Status: Pending")
@@ -396,7 +399,16 @@ else:
         my_events = [e for e in st.session_state['events'] if e['dept'] == user_dept]
         if my_events:
             df_my = pd.DataFrame(my_events)
-            st.dataframe(df_my[['id', 'name', 'venue', 'start_time', 'end_time', 'status']], use_container_width=True)
+            st.dataframe(df_my[['id', 'name', 'venue', 'start_time', 'end_time', 'status', 'feedback']], use_container_width=True)
+            
+            # Action: Cancel Pending Event
+            pending_my = [e for e in my_events if e['status'] == 'Pending']
+            if pending_my:
+                evt_to_cancel = st.selectbox("Cancel Pending Request", pending_my, format_func=lambda x: f"{x['name']} ({x['id']})")
+                if st.button("Cancel Request"):
+                    st.session_state['events'].remove(evt_to_cancel)
+                    st.success("Request Cancelled.")
+                    st.rerun()
             
             # Completion
             active_events = [e for e in my_events if e['status'] == 'Final Approved']
@@ -419,12 +431,22 @@ else:
         else:
             for event in pending_approvals:
                 with st.expander(f"{event['name']} | {event['venue']} | {event['start_time']}"):
+                    st.write(f"**Coordinator:** {event['coordinator']}")
+                    st.write(f"**Description:** {event.get('description', 'N/A')}")
+                    st.write(f"**Equipment:** {', '.join(event['equipment'])}")
+                    
+                    feedback = st.text_input("Feedback/Reason (Optional)", key=f"feed_{event['id']}")
+                    
                     col1, col2 = st.columns(2)
                     if col1.button("Approve", key=f"hod_app_{event['id']}"):
                         event['status'] = "HOD Approved"
+                        event['feedback'] = feedback
+                        st.balloons()
                         st.rerun()
                     if col2.button("Reject", key=f"hod_rej_{event['id']}"):
                         event['status'] = "Rejected"
+                        event['feedback'] = feedback
+                        st.error("Rejected.")
                         st.rerun()
 
     # --- VIEW: Dean -------------------------------------------------------------
@@ -432,34 +454,56 @@ else:
         st.header("🎓 Dean Approval Dashboard")
         dean_approvals = [e for e in st.session_state['events'] if e['status'] == 'HOD Approved']
         
+        # Analytics for Dean
+        st.subheader("Department Usage Analytics")
+        if st.session_state['events']:
+            df_analytics = pd.DataFrame(st.session_state['events'])
+            dept_counts = df_analytics['dept'].value_counts()
+            st.bar_chart(dept_counts)
+        
+        st.subheader("Pending Approvals")
         if not dean_approvals:
             st.info("No pending approvals.")
         else:
             for event in dean_approvals:
                 with st.expander(f"{event['dept']}: {event['name']} | {event['venue']}"):
+                    st.write(f"**Desc:** {event.get('description', 'N/A')}")
+                    st.write(f"**HOD Feedback:** {event.get('feedback', 'None')}")
+                    
+                    feedback = st.text_input("Dean's Note", key=f"dean_note_{event['id']}")
+                    
                     col1, col2 = st.columns(2)
                     if col1.button("Approve", key=f"dean_app_{event['id']}"):
                         event['status'] = "Dean Approved"
+                        event['feedback'] += f" | Dean: {feedback}"
+                        st.success("Approved!")
                         st.rerun()
                     if col2.button("Reject", key=f"dean_rej_{event['id']}"):
                         event['status'] = "Rejected"
+                        event['feedback'] += f" | Dean: {feedback}"
+                        st.error("Rejected.")
                         st.rerun()
 
     # --- VIEW: Institutional Head -----------------------------------------------
     elif role == "Institutional Head":
         st.header("🏫 Final Approval Dashboard")
         head_approvals = [e for e in st.session_state['events'] if e['status'] == 'Dean Approved']
+        
         if not head_approvals:
             st.info("No pending approvals.")
         else:
             for event in head_approvals:
                 with st.expander(f"{event['dept']}: {event['name']}"):
+                    st.info(f"Prior Approvals: {event.get('feedback', 'None')}")
                     col1, col2 = st.columns(2)
                     if col1.button("Final Approve", key=f"head_app_{event['id']}"):
                         event['status'] = "Final Approved"
+                        st.success("Event has been Finally Approved!")
+                        st.balloons()
                         st.rerun()
                     if col2.button("Reject", key=f"head_rej_{event['id']}"):
                         event['status'] = "Rejected"
+                        st.error("Rejected.")
                         st.rerun()
 
     # --- VIEW: Admin (ENHANCED) -------------------------------------------------

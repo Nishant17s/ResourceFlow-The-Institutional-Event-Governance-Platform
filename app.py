@@ -15,11 +15,15 @@ import plotly.express as px
 # --------------------------------------------------------------------------------
 # 0. UI Configuration & Custom CSS
 # --------------------------------------------------------------------------------
-st.set_page_config(page_title="ResourceFlow", layout="wide", page_icon="🏛️")
+import requests
+from streamlit_lottie import st_lottie
 
 # --------------------------------------------------------------------------------
 # 0. UI Configuration & Ultra-Premium Custom CSS
 # --------------------------------------------------------------------------------
+st.set_page_config(page_title="ResourceFlow", layout="wide", page_icon="🏛️")
+
+# Custom CSS for Premium Look
 st.markdown("""
     <style>
         /* Import Modern Fonts */
@@ -50,6 +54,15 @@ st.markdown("""
             backdrop-filter: blur(12px);
             border-right: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 5px 0 25px rgba(0,0,0,0.3);
+        }
+        
+        /* Fade In Animation for Content */
+        .element-container {
+            animation: fadeIn 0.8s ease-in-out;
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
         }
 
         /* Custom Scrollbar */
@@ -128,15 +141,14 @@ st.markdown("""
             background: rgba(255, 255, 255, 0.08);
             border-color: rgba(255, 255, 255, 0.2);
         }
-
-        /* DataTables */
-        [data-testid="stDataFrame"] {
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            overflow: hidden;
-        }
         
         /* Metric Cards */
+        div[data-testid="stMetric"] {
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
         [data-testid="stMetricValue"] {
             font-size: 2rem !important;
             color: #e52e71 !important;
@@ -156,6 +168,19 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True)
+
+# --------------------------------------------------------------------------------
+# Helper: Load Lottie Animation
+# --------------------------------------------------------------------------------
+@st.cache_data
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
+lottie_event = load_lottieurl("https://assets5.lottiefiles.com/packages/lf20_jcikwtux.json")
+lottie_login = load_lottieurl("https://assets4.lottiefiles.com/packages/lf20_mjlh3hcy.json")
 
 # --------------------------------------------------------------------------------
 # 1. Session State Initialization (Simulated Database)
@@ -225,14 +250,28 @@ USERS = {
 }
 
 def login_page():
-    st.markdown("<h1 style='text-align: center;'>🔐 ResourceFlow Login</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; margin-bottom: 2rem;'>🚀 Welcome to ResourceFlow</h1>", unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1,2,1])
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        if lottie_login:
+            st_lottie(lottie_login, height=400, key="login_anim")
+        else:
+            st.image("https://cdn-icons-png.flaticon.com/512/3209/3209990.png", width=300)
+            
     with col2:
+        st.markdown("""
+            <div style='background: rgba(255,255,255,0.05); padding: 40px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);'>
+                <h2 style='text-align: center; color: #fff;'>Login</h2>
+            </div>
+        """, unsafe_allow_html=True)
+        
         with st.form("login_form"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Login")
+            st.markdown("<br>", unsafe_allow_html=True)
+            submitted = st.form_submit_button("Access Dashboard", use_container_width=True)
             
             if submitted:
                 if username in USERS and USERS[username]['password'] == password:
@@ -240,12 +279,13 @@ def login_page():
                     st.session_state['user_role'] = USERS[username]['role']
                     st.session_state['user_dept'] = USERS[username]['dept']
                     st.session_state['user_name'] = USERS[username]['name']
+                    st.balloons()
                     st.success("Login Successful!")
                     st.rerun()
                 else:
                     st.error("Invalid Username or Password")
         
-        st.info("💡 **Demo Credentials** (Password: 123 for all): \n- `admin`\n- `cse_coord`\n- `hod_cse`\n- `dean`\n- `head`")
+        st.caption("💡 **Demo Credentials** (Pass: 123): `admin`, `cse_coord`, `hod_cse`, `dean`, `head`")
 
 def logout():
     st.session_state['logged_in'] = False
@@ -285,13 +325,29 @@ else:
     user_name = st.session_state['user_name']
     
     with st.sidebar:
+        if lottie_event:
+            st_lottie(lottie_event, height=150, key="menu_anim")
         st.title(f"👤 {user_name}")
         st.caption(f"Role: {role} | Dept: {user_dept}")
         if st.button("Logout", key="logout_btn"):
             logout()
         st.markdown("---")
 
+    # --- Live Stats Row ---
     st.title("ResourceFlow Dashboard")
+    
+    # Calculate Stats
+    total_events = len(st.session_state['events'])
+    pending_count = len([e for e in st.session_state['events'] if e['status'] == 'Pending'])
+    my_dept_events = len([e for e in st.session_state['events'] if e['dept'] == user_dept]) if user_dept != "ALL" else total_events
+    
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total Events", total_events, "+1 today")
+    m2.metric("Pending Approvals", pending_count, "Urgent", delta_color="inverse")
+    m3.metric("Dept Activity", my_dept_events, "Active")
+    m4.metric("System Status", "Online", "🟢")
+    
+    st.markdown("---")
 
     # --- VIEW: Event Coordinator ------------------------------------------------
     if role == "Event Coordinator":

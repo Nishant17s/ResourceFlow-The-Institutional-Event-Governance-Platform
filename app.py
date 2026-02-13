@@ -452,14 +452,28 @@ else:
     # --- VIEW: Dean -------------------------------------------------------------
     elif role == "Dean":
         st.header("🎓 Dean Approval Dashboard")
-        dean_approvals = [e for e in st.session_state['events'] if e['status'] == 'HOD Approved']
         
-        # Analytics for Dean
-        st.subheader("Department Usage Analytics")
+        # Analytics for Dean (Enhanced)
+        st.subheader("📊 Department Analytics")
         if st.session_state['events']:
             df_analytics = pd.DataFrame(st.session_state['events'])
-            dept_counts = df_analytics['dept'].value_counts()
-            st.bar_chart(dept_counts)
+            
+            # 1. Events per Department (Bar Chart)
+            dept_counts = df_analytics['dept'].value_counts().reset_index()
+            dept_counts.columns = ['Department', 'Count']
+            
+            fig_dept = px.bar(
+                dept_counts, 
+                x='Department', 
+                y='Count', 
+                color='Department', 
+                title='Events by Department',
+                text='Count',
+                template='plotly_dark'
+            )
+            st.plotly_chart(fig_dept, use_container_width=True)
+        
+        dean_approvals = [e for e in st.session_state['events'] if e['status'] == 'HOD Approved']
         
         st.subheader("Pending Approvals")
         if not dean_approvals:
@@ -487,6 +501,41 @@ else:
     # --- VIEW: Institutional Head -----------------------------------------------
     elif role == "Institutional Head":
         st.header("🏫 Final Approval Dashboard")
+        
+        # Head Analytics
+        if st.session_state['events']:
+            st.subheader("📈 Institutional Overview")
+            df_head = pd.DataFrame(st.session_state['events'])
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                # Status Distribution Pie Chart
+                status_counts = df_head['status'].value_counts().reset_index()
+                status_counts.columns = ['Status', 'Count']
+                fig_status = px.pie(
+                    status_counts, 
+                    values='Count', 
+                    names='Status', 
+                    title='Overall Event Status',
+                    hole=0.4,
+                    template='plotly_dark'
+                )
+                st.plotly_chart(fig_status, use_container_width=True)
+            
+            with c2:
+                 # Venue Utilization
+                venue_counts = df_head['venue'].value_counts().reset_index()
+                venue_counts.columns = ['Venue', 'Usage Count']
+                fig_venue = px.bar(
+                    venue_counts, 
+                    x='Venue', 
+                    y='Usage Count', 
+                    color='Venue', 
+                    title='Venue Utilization',
+                    template='plotly_dark'
+                )
+                st.plotly_chart(fig_venue, use_container_width=True)
+
         head_approvals = [e for e in st.session_state['events'] if e['status'] == 'Dean Approved']
         
         if not head_approvals:
@@ -510,7 +559,7 @@ else:
     elif role == "Admin":
         st.header("🛠️ Admin Master Control")
         
-        tabs = st.tabs(["🏛️ Venues & Equipment", "📝 Event Manager", "📊 Global Logs"])
+        tabs = st.tabs(["🏛️ Venues & Equipment", "📝 Event Manager", "📊 Global Logs", "📈 Analytics"])
         
         # Tab 1: Resource Management
         with tabs[0]:
@@ -581,6 +630,40 @@ else:
         with tabs[2]:
             st.dataframe(pd.DataFrame(st.session_state['events']))
 
+        # Tab 4: Admin Analytics (New)
+        with tabs[3]:
+            st.subheader("Deep Dive Analytics")
+            if st.session_state['events']:
+                df_admin = pd.DataFrame(st.session_state['events'])
+                
+                # 3D Scatter Plot (Time vs Venue)
+                fig_3d = px.scatter_3d(
+                    df_admin,
+                    x='dept',
+                    y='venue',
+                    z='id',
+                    color='status',
+                    size_max=18,
+                    opacity=0.7,
+                    title="3D Event Distribution",
+                    template='plotly_dark'
+                )
+                st.plotly_chart(fig_3d, use_container_width=True)
+                
+                # Heatmap of Activity by Hour (Simulation)
+                st.write("**Busy Hours Heatmap (Simulated)**")
+                # Create dummy hour data for visualization
+                df_admin['hour'] = df_admin['start_time'].dt.hour
+                fig_heat = px.density_heatmap(
+                    df_admin, 
+                    x='start_time', 
+                    y='venue', 
+                    z='id', 
+                    title="Venue Traffic Heatmap",
+                    template='plotly_dark'
+                )
+                st.plotly_chart(fig_heat, use_container_width=True)
+
     # --------------------------------------------------------------------------------
     # 5. Visualization (Global Occupancy View - Visible to Admin & Heads)
     # --------------------------------------------------------------------------------
@@ -589,12 +672,22 @@ else:
         st.header("📊 Global Resource Occupancy")
         
         active_events = [e for e in st.session_state['events'] if e['status'] not in ['Rejected', 'Completed']]
+        
         if active_events:
             df = pd.DataFrame(active_events)
+            
+            # Gantt Chart using Plotly
             fig = px.timeline(
-                df, x_start="start_time", x_end="end_time", y="venue", color="dept",
-                hover_data=["name", "status"]
+                df, 
+                x_start="start_time", 
+                x_end="end_time", 
+                y="venue", 
+                color="dept", 
+                hover_data=["name", "status"],
+                title="Venue Usage Timeline",
+                template="plotly_dark"
             )
             fig.update_yaxes(categoryorder="total ascending")
             st.plotly_chart(fig, use_container_width=True)
-
+        else:
+            st.info("No active events to display in timeline.")

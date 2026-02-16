@@ -367,7 +367,7 @@ else:
         st.caption("ResourceFlow v2.0 • Online")
 
     # --- Live Stats Row ---
-    st.title(f"{nav_mode if nav_mode != 'Dashboard' else 'ResourceFlow Dashboard'}")
+    st.title(f"{nav_mode if nav_mode != 'Dashboard' else 'ResourceFlow Dashboard v2.1'}")
     
     # Calculate Stats
     total_events = len(st.session_state['events'])
